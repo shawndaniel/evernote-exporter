@@ -1,10 +1,9 @@
-# Export Evernote Notebooks & Stacks Into External Software
-This script allows you to export all Evernote data (including notebooks & stacks) for the purpose of either backing up or importing into external software. 
+# Export Evernote Notebooks/Stacks Into External Apps
+This script allows you to export all Evernote data (including notebooks & stacks) for the purpose of either backing up or importing into external software such as Zim Wiki (in my case). 
 
-I wrote this because there was no export/import solution for __notebooks & stacks__ (that is importable into external software) that I am aware of.
+I wrote this because there is currently no export solution for notebooks & stacks that allows for importing into external software (none that I am aware of).
 
-Basically the script exports all of your Evernote notes into a hierarchical directory structure based on your notebooks and notebook stacks. Additional features include converting all note syntax to markdown text or Zim Wiki syntax (to import into Zim Wiki).
-
+Basically the script exports all of your Evernote notes into a hierarchical directory structure based on your notebooks and notebook stacks. Additional optional features include converting all note syntax to markdown text or Zim Wiki syntax (to import into Zim Wiki).
 
 
 Why Import to Zim Wiki? (Optional)

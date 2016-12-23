@@ -65,12 +65,7 @@ class BackupEvernote(object):
 
         # remove forbidden chars in path filename
         old_filename = path.rpartition('/')[-1]
-        filename = old_filename
-        for char in self.forbidden:
-            if char in old_filename:
-                filename = old_filename.replace(char, '_')
-
-        path = path.replace(old_filename, filename)
+        path = self._rename_file(path, old_filename)
         if not url:
             return '{{%s|%s}}' % (path, title)
         else:
@@ -117,7 +112,6 @@ class BackupEvernote(object):
         text_maker = html2text.HTML2Text()
         text_maker.escape_snob = True
 
-        # todo: fix encoding
         with open(full_path, 'r') as f:
             html = f.read()
         content = ''
@@ -132,34 +126,33 @@ class BackupEvernote(object):
         if to_zim:
             content = self.to_zim_syntax(content)
 
-        for char in self.forbidden:
-            if char in filename:
-                filename = filename.replace(char, '_')
-        renamed = filename.replace('.html', '.txt')
-        old_filename = full_path.rpartition('/')[-1]
-        fn_path = full_path.replace(old_filename, renamed)
-
+        fn_path = self._rename_file(full_path, filename)
         with open(fn_path, 'w') as f:
             try:
                 f.write(content.encode('ascii', 'ignore'))
             except Exception as e:
                 self._exception('save note', fn_path, e)
-            else:
-                os.remove(full_path)
         return
 
-    def _edit_dir_names(self, stack_or_nb, folder_chars):
-        if type(stack_or_nb) == unicode:
+    def _rename_file(self, full_path, filename):
+        filename = self._remove_chars(filename, self.forbidden)
+        renamed = filename.replace('.html', '.txt')
+        old_filename = full_path.rpartition('/')[-1]
+        return full_path.replace(old_filename, renamed)
+
+    def _remove_chars(self, stack_or_nb, folder_chars):
+        try:
             stack_or_nb = stack_or_nb.replace('/', '&')
             for char in folder_chars:
                 if char in stack_or_nb:
                     stack_or_nb = stack_or_nb.replace(char, '_')
-
-        return stack_or_nb
+        except Exception:
+            raise
+        finally:
+            return stack_or_nb
 
     def nbooks_to_dirs(self):
         """ creates notebook & notebook stack folder structure containing all respective notes"""
-        data = []
         copied = []
         con = sqlite3.connect(self.db_dir)
         nbs = "SELECT * FROM note_attr WHERE note_attr.notebook_uid = %s;"
@@ -170,8 +163,8 @@ class BackupEvernote(object):
 
         for ind, i in enumerate(notebooks):
             nb_id, notebook, stack = i[0], i[1], i[2]
-            stack = self._edit_dir_names(stack, folder_chars)
-            notebook = self._edit_dir_names(notebook, folder_chars)
+            stack = self._remove_chars(stack, folder_chars)
+            notebook = self._remove_chars(notebook, folder_chars)
 
             nb_notes = con.execute(nbs % nb_id)
             notes_set = {i[1] for i in nb_notes}
@@ -198,21 +191,24 @@ class BackupEvernote(object):
                     fl = urllib.unquote(f)
                     fl_name = fl.rpartition('.')[0]
                     f_path = os.path.join(p, f)
-                    fn_path = os.path.join(p, fl)
-                    os.rename(f_path, fn_path)
 
                     if fl_name in notes_set:
                         copied.append(fl)
-                        shutil.copy(fn_path, os.path.join(s_dir, fl))
-            self._counter(ind, 'notebooks/stacks organized')
+                        out_path = os.path.join(s_dir, f)
+                        shutil.copy(f_path, out_path)
+                        os.rename(out_path, os.path.join(s_dir, fl))
+            self._counter(ind, 'notebooks/stacks exported')
 
+        self.transfer_uncategorized(copied)
+        return
+
+    def transfer_uncategorized(self, copied):
         print "\nTransfering the rest of the files that do not belong to a notebook..."
         uncategorized = os.path.join(self.output_dir, 'uncategorized')
         os.mkdir(uncategorized)
         ind = 0
         for fl in os.listdir(self.evernote_dir):
             if fl not in copied:
-                ind += 1
                 f_path = os.path.join(self.evernote_dir, fl)
                 out_path = os.path.join(uncategorized, fl)
                 try:
@@ -220,9 +216,20 @@ class BackupEvernote(object):
                 except IOError:
                     shutil.copytree(f_path, out_path)
                 finally:
+                    ind += 1
                     self._counter(ind, 'copied files/dirs')
 
-        return data
+        # rename all files and folders within output folder
+        for p, dirs, files in os.walk(self.output_dir):
+            for d in dirs:
+                d_path = os.path.join(p, d)
+                new_path = self._rename_file(d_path, d)
+                os.rename(d_path, new_path)
+            for f in files:
+                f_path = os.path.join(p, f)
+                new_path = self._rename_file(f_path, f)
+                os.rename(f_path, new_path)
+        return
 
     def backup(self, notebooks_to_dirs=True, to_markdown=True, zim_sintax=False):
         if notebooks_to_dirs:
@@ -237,7 +244,7 @@ class BackupEvernote(object):
             for p, d, files in os.walk(c_dir):
                 for f in files:
                     fl_path = os.path.join(p, f)
-                    if fnmatch(f, '*.html'):
+                    if fnmatch(f, '*.txt'):
                         self.edit_file(fl_path, f, zim_sintax)
                         ind += 1
                         self._counter(ind, 'edited files')
@@ -249,7 +256,7 @@ class BackupEvernote(object):
 if __name__ == '__main__':
     notes_dir = '/media/truecrypt2'
     db_dir = '/home/unknown/evernote_backup/Databases/shawnx22.exb'
-    output_dir = '/tmp/test'
+    output_dir = '/home/unknown/tmp'
 
     ev = BackupEvernote(notes_dir, db_dir, output_dir)
     ev.backup(notebooks_to_dirs=True,
