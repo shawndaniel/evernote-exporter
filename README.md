@@ -1,9 +1,10 @@
-# Export All Evernote Notes, Notebooks, and Stacks
-I couldn't procrastinate any longer, Evernote is too much of a privacy and security hazard so I finally decided to take matters into my own hands and write this little script to help me export not only my notes but also notebooks and notebook stacks. 
+# Export Evernote Notebooks & Stacks Into External Software
+This script allows you to export all Evernote data (including notebooks & stacks) for the purpose of either backing up or importing into external software. 
 
-This script basically exports all of your Evernote notes into a hierarchical directory structure based on your notebooks and notebook stacks. Additional features include converting all note syntax to markdown text or Zim Wiki syntax (to import into Zim Wiki).
+I wrote this because there was no export/import solution for __notebooks & stacks__ (that is importable into external software) that I am aware of.
 
-If your like me, then over the years you may have already accumulated thousands of notes categorized by a lot of notebooks (in my case ~70), and without any export/import solution for __notebooks & stacks__ in existence (that I'm aware of), this script may be of some help.
+Basically the script exports all of your Evernote notes into a hierarchical directory structure based on your notebooks and notebook stacks. Additional features include converting all note syntax to markdown text or Zim Wiki syntax (to import into Zim Wiki).
+
 
 
 Why Import to Zim Wiki? (Optional)
@@ -44,8 +45,7 @@ Since Evernote does not natively allow you to export all notebook data (stacks/n
     * optionally, you may set it as the Default notebook in the dropdown.
 
     > *"Rebuilding the index in may take quite some time, if you have added many pages. 
-    > It may be advisable to click Tools / Re-build Index"
-    > - http://zim-wiki.org/manual/Help/Importing_external_files.html*
+    > It may be advisable to click Tools / Re-build Index" - http://zim-wiki.org/manual/Help/Importing_external_files.html*
 
 
 Rant
