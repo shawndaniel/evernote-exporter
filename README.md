@@ -3,7 +3,7 @@ I couldn't procrastinate any longer, Evernote is too much of a privacy and secur
 
 This script basically exports all of your Evernote notes into a hierarchical directory structure based on your notebooks and notebook stacks. Additional features include converting all note syntax to markdown text or Zim Wiki syntax (to import into Zim Wiki).
 
-If your like me, then over the years you may have already accumulated thousands of notes categorized by a lot of notebooks (in my case ~70) into Evernote, and without any export/import solution for __notebooks & stacks__ in existence (that I'm aware of), this script may be of some help.
+If your like me, then over the years you may have already accumulated thousands of notes categorized by a lot of notebooks (in my case ~70), and without any export/import solution for __notebooks & stacks__ in existence (that I'm aware of), this script may be of some help.
 
 
 Why Import to Zim Wiki? (Optional)
@@ -21,7 +21,7 @@ How it works
     * _(optionally)_ converts the html within files to markdown text, 
     * _(optionally)_ further convert the notes to be importable into Zim wiki, which will do the following:
         * further modifies lists, headings, and images in order to comply with zim syntax
-        * replaces all forbidden characters in filenames (which are used as page names) with underscores
+        * replaces all forbidden characters in filenames and directories (which are used as page names) with underscores
         * replaces .html file extension with .txt
 
 
@@ -56,6 +56,5 @@ Due to evernotes sheer carelessness / lack of consideration in not including not
 Credits
 -------
 
-html2text.py module by Aaron Swartz:
+* html2text.py module by Aaron Swartz
     * https://github.com/aaronsw/html2text
-    * https://pypi.python.org/pypi/html2text

@@ -98,11 +98,9 @@ class BackupEvernote(object):
     def to_zim_syntax(self, content):
         """ Consider editing this func to fit the syntax of your chosen note taking software"""
         # fix & convert some of the markdown to zim syntax
-        if '\00' in content:
-            content.replace('\00', '')
         new_c = content.replace('### ', '== ').replace('## ', '==== ').replace('# ', '====== ')  # headers
-        new_c = new_c.replace('* * *', ('-' * 80))  # line separation?
-        new_c = new_c.replace('* * *', ('-' * 80))  # line separation?
+        line_pat = re.compile(r'^\*[^\S\n]*\*[^\S\n]*\*\n', re.MULTILINE)
+        new_c = re.sub(line_pat, ('-' * 80), new_c)  # line separation?
 
         # fix bullet lists
         new_c = re.sub(r'\*[^\S\n]+?\*', self._multi_asterisk_fix, new_c)  # multiple asterisks on same line
@@ -150,19 +148,14 @@ class BackupEvernote(object):
                 os.remove(full_path)
         return
 
-    def _edit_dir_names(self, stack, notebook, folder_chars):
-        if type(stack) == unicode:
-            stack = stack.replace('/', '&')
+    def _edit_dir_names(self, stack_or_nb, folder_chars):
+        if type(stack_or_nb) == unicode:
+            stack_or_nb = stack_or_nb.replace('/', '&')
             for char in folder_chars:
-                if char in stack:
-                    stack = stack.replace(char, '_')
-        if type(notebook) == unicode:
-            notebook = notebook.replace('/', '&')
-            for char in folder_chars:
-                if char in notebook:
-                    notebook = notebook.replace(char, '_')
+                if char in stack_or_nb:
+                    stack_or_nb = stack_or_nb.replace(char, '_')
 
-        return stack, notebook
+        return stack_or_nb
 
     def nbooks_to_dirs(self):
         """ creates notebook & notebook stack folder structure containing all respective notes"""
@@ -177,7 +170,8 @@ class BackupEvernote(object):
 
         for ind, i in enumerate(notebooks):
             nb_id, notebook, stack = i[0], i[1], i[2]
-            stack, notebook = self._edit_dir_names(stack, notebook, folder_chars)
+            stack = self._edit_dir_names(stack, folder_chars)
+            notebook = self._edit_dir_names(notebook, folder_chars)
 
             nb_notes = con.execute(nbs % nb_id)
             notes_set = {i[1] for i in nb_notes}
@@ -255,7 +249,7 @@ class BackupEvernote(object):
 if __name__ == '__main__':
     notes_dir = '/media/truecrypt2'
     db_dir = '/home/unknown/evernote_backup/Databases/shawnx22.exb'
-    output_dir = '/home/unknown/evernote_backup/converted_notes'
+    output_dir = '/tmp/test'
 
     ev = BackupEvernote(notes_dir, db_dir, output_dir)
     ev.backup(notebooks_to_dirs=True,
