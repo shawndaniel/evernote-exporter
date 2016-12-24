@@ -17,6 +17,8 @@ class BackupEvernote(object):
 
     def __init__(self, evernote_dir, db_dir='', output_dir=''):
         self.forbidden = ["?", "#", "/", "\\", "*", '"', "<", ">", "|", "%", " "]
+        self.fb_w_trail = self.forbidden
+        del self.fb_w_trail[2]
         self.evernote_dir = evernote_dir
         self.db_dir = db_dir
         self.output_dir = output_dir
@@ -61,11 +63,16 @@ class BackupEvernote(object):
 
         # image with or without url
         title, path = self._get_pt(string)
-        path = self.output_dir + '/' + path
+        path = '%s/%s/%s' % (self.output_dir, 'uncategorized', path)
 
-        # remove forbidden chars in path filename
-        old_filename = path.rpartition('/')[-1]
-        path = self._rename_file(path, old_filename)
+        # remove escape chars
+        if '\[' in path:
+            path = path.replace('\[', '[')
+        if '\]' in path:
+            path = path.replace('\]', ']')
+
+        path = self._remove_chars(path, self.fb_w_trail, trail=True)
+        path += '?800'
         if not url:
             return '{{%s|%s}}' % (path, title)
         else:
@@ -118,6 +125,8 @@ class BackupEvernote(object):
         if html:
             try:
                 content = text_maker.handle(unicode(html, errors='ignore'))
+                content = content.encode('ascii', 'ignore')
+                content = content.split('\00')[0]   # remove null chars
             except Exception as e:
                 self._exception('convert content of note to markdown', full_path, e)
         else:
@@ -140,9 +149,10 @@ class BackupEvernote(object):
         old_filename = full_path.rpartition('/')[-1]
         return full_path.replace(old_filename, renamed)
 
-    def _remove_chars(self, stack_or_nb, folder_chars):
+    def _remove_chars(self, stack_or_nb, folder_chars, trail=False):
         try:
-            stack_or_nb = stack_or_nb.replace('/', '&')
+            if not trail:
+                stack_or_nb = stack_or_nb.replace('/', '&')
             for char in folder_chars:
                 if char in stack_or_nb:
                     stack_or_nb = stack_or_nb.replace(char, '_')
@@ -155,7 +165,6 @@ class BackupEvernote(object):
         """ creates notebook & notebook stack folder structure containing all respective notes"""
         copied = []
         con = sqlite3.connect(self.db_dir)
-        nbs = "SELECT * FROM note_attr WHERE note_attr.notebook_uid = %s;"
         notebooks = con.execute("SELECT * FROM notebook_attr;").fetchall()
 
         folder_chars = self.forbidden
@@ -166,25 +175,26 @@ class BackupEvernote(object):
             stack = self._remove_chars(stack, folder_chars)
             notebook = self._remove_chars(notebook, folder_chars)
 
-            nb_notes = con.execute(nbs % nb_id)
+            nb_notes = con.execute('SELECT * FROM note_attr WHERE note_attr.notebook_uid = %s;' % nb_id)
             notes_set = {i[1] for i in nb_notes}
             s_dir = ''
 
-            if stack:
-                stack_path = self.output_dir + '/' + stack
-                if not os.path.isdir(stack_path):
-                    os.mkdir(stack_path)
-                s_dir = stack_path
-            if notebook and stack:
-                nb_in_stack = self.output_dir + '/%s/%s' % (stack, notebook)
-                if not os.path.isdir(nb_in_stack):
-                    os.mkdir(nb_in_stack)
-                s_dir = nb_in_stack
-            elif notebook and not stack:
+            if notebook and not stack:
                 notebook_dir = self.output_dir + '/' + notebook
                 if not os.path.isdir(notebook_dir):
                     os.mkdir(notebook_dir)
                 s_dir = notebook_dir
+            else:
+                if stack:
+                    stack_path = self.output_dir + '/' + stack
+                    if not os.path.isdir(stack_path):
+                        os.mkdir(stack_path)
+                    s_dir = stack_path
+                if notebook:
+                    nb_in_stack = self.output_dir + '/%s/%s' % (stack, notebook)
+                    if not os.path.isdir(nb_in_stack):
+                        os.mkdir(nb_in_stack)
+                    s_dir = nb_in_stack
 
             for p, d, files in os.walk(self.evernote_dir):
                 for f in files:

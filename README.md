@@ -12,9 +12,10 @@ It is the most simple, intuitive, linux friendly, offline, semi-markdown compati
 
 
 How it works
--------------
+------------
+
 * Queries your local Evernote database to grab all the notebooks and notebook stacks associated with your notes.
-* Recursively walks the directory tree (of your exported Evernote backup) and does the following:
+* Recursively walks the directory tree (of your exported Evernote backup) and does the following\:
     * creates proper notebook structure & organizes your notes accordingly (based on your Evernote's database mapping)
         * copies all the notes to their respective folder (notebook) or nested folder (stack + notebook)
         * notes that do not belong to a notebook are copied into a directory named "uncategorized"
@@ -24,6 +25,17 @@ How it works
         * replaces all forbidden characters in filenames and directories (which are used as page names) with underscores
         * replaces .html file extension with .txt
 
+The console output should look similar to the following\:
+```
+Organizing notes by directory (based on notebooks & stacks)...
+	notebooks/stacks exported: 68
+Transfering the rest of the files that do not belong to a notebook...
+	copied files/dirs: 2823
+Converting note syntax...
+	edited files: 2815
+	
+Process complete.
+```
 
 Instructions
 ------------
@@ -33,18 +45,23 @@ Since Evernote does not natively allow you to export all notebook data (stacks/n
 1. if you haven't already, install the Evernote desktop client (in a VM if needed)
     * make sure your data is synced
     * In the top left side panel, right click "Notebooks" > "Export notes", to export all your notes 
-2. prepare and run the script by doing the following:
-    * input the full path where your exported Evernote data resides
-    * input the full path where your Evernote database file resides (i.e; "your_username.exb")
-    * input the new path where you want to save all your newly constructed Evernote data
-    * run it
+2. prepare and run the script by editing the following lines according to your evernote data:
+```python
+notes_dir = '/exported/notes'
+db_dir = '/home/unknown/evernote/Databases/username.exb'
+output_dir = '/home/converted_notes'
+```
+
+    - *notes_dir* is the full path where your exported Evernote notes reside
+    - *db_dir* is the path where your Evernote database file resides
+    - *output_path* is the new path where you want to save all your newly constructed Evernote data
  
 3. **(Optional)** Import data into Zim Wiki:
     * click File > Open Another notebook, and select the folder where your converted Evernote data is.
     * optionally, you may set it as the Default notebook in the dropdown.
 
-    > *"Rebuilding the index in may take quite some time, if you have added many pages. 
-    > It may be advisable to click Tools / Re-build Index" - http://zim-wiki.org/manual/Help/Importing_external_files.html*
+    > *"Rebuilding the index in may take quite some time, if you have added many pages. It may be advisable to click Tools / Re-build Index"
+    > - http://zim-wiki.org/manual/Help/Importing_external_files.html*
 
 
 Rant

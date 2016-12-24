@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='evernote_exporter',
-    version='0.5dev',
+    version='0.6dev',
     description='Exports all Evernote notes, notebooks, and stacks in a more widely importable format',
     long_description=open('README.md').read(),
     author='Shawn Daniel',
