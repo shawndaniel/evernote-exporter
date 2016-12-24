@@ -51,10 +51,14 @@ class BackupEvernote(object):
         url = ''
         string = matchobj.group(0)
 
+        # remove escape chars
+        if '\n' in string:
+            string = string.replace('\n', ' ')
+
         # this is a url
         if '![' not in string:
-            url, title = self._get_pt(string)
-            return '[[%s|%s]]' % (url, title)
+            url, _ = self._get_pt(string)
+            return '%s' % url
 
         # image contains url
         url_pat = re.compile(r'.(\[.*\])\(.*\)\(.*\)$', re.MULTILINE)
@@ -65,12 +69,7 @@ class BackupEvernote(object):
         title, path = self._get_pt(string)
         path = '%s/%s/%s' % (self.output_dir, 'uncategorized', path)
 
-        # remove escape chars
-        if '\[' in path:
-            path = path.replace('\[', '[')
-        if '\]' in path:
-            path = path.replace('\]', ']')
-
+        # todo: image path (remove random dash? -_) i.e t seal img
         path = self._remove_chars(path, self.fb_w_trail, trail=True)
         path += '?800'
         if not url:
@@ -82,6 +81,7 @@ class BackupEvernote(object):
         return re.sub(r'\**', '', matchobj.group(0))
 
     def _fix_spacing(self, matchobj):
+        # todo: add wider bullet conversions i.e imac note
         string = matchobj.group(0)
         s_len = len(string) - 1
         if s_len <= 1:
@@ -99,10 +99,21 @@ class BackupEvernote(object):
 
     def to_zim_syntax(self, content):
         """ Consider editing this func to fit the syntax of your chosen note taking software"""
-        # fix & convert some of the markdown to zim syntax
-        new_c = content.replace('### ', '== ').replace('## ', '==== ').replace('# ', '====== ')  # headers
+        # headers
+        # todo: remove heading chars / do not add heading if proceeded by image or url
+        # todo: only ensure 1 h1 header (first), replace other h1's with h2
+        new_c = content.replace('####', '=').('### ', '== ').replace('## ', '==== ').replace('# ', '====== ')
+
+        # line separation?
+        # todo: remake regex r'[#*_-]{3,}' not proceeded by words (\W) i.e jsand
         line_pat = re.compile(r'^\*[^\S\n]*\*[^\S\n]*\*\n', re.MULTILINE)
-        new_c = re.sub(line_pat, ('-' * 80), new_c)  # line separation?
+        new_c = re.sub(line_pat, ('-' * 80), new_c)
+
+        # todo: regex to replace 3+ line breaks with 2
+
+        # todo: regex for bold text, 2 * followed by words then 2 *
+
+        # todo: replace \- at start of the line with bullet
 
         # fix bullet lists
         new_c = re.sub(r'\*[^\S\n]+?\*', self._multi_asterisk_fix, new_c)  # multiple asterisks on same line
@@ -111,13 +122,13 @@ class BackupEvernote(object):
 
         # fix urls and images
         new_c = re.sub(r'\*{2}(\[)|\)\*{2}', self._remove_asterisks, new_c)
-        new_c = re.sub(r'!*\[(.*)\]\((.*)\)', self._image_url_fix, new_c)
+        # new_c = re.sub(r'!*\[[^\]]*\]\([^\)]*\)', self._image_url_fix, new_c)
+        new_c = re.sub(r'!*[\\\[]*\[[^\]]*[\\\]]*\([^\)]*[\]\)]*(\([^\)]*\))*', self._image_url_fix, new_c)
 
         return new_c
 
     def edit_file(self, full_path, filename, to_zim=False):
         text_maker = html2text.HTML2Text()
-        text_maker.escape_snob = True
 
         with open(full_path, 'r') as f:
             html = f.read()
@@ -127,6 +138,7 @@ class BackupEvernote(object):
                 content = text_maker.handle(unicode(html, errors='ignore'))
                 content = content.encode('ascii', 'ignore')
                 content = content.split('\00')[0]   # remove null chars
+                content = content.replace('\.', '.')    # remove escape chars
             except Exception as e:
                 self._exception('convert content of note to markdown', full_path, e)
         else:
@@ -143,12 +155,6 @@ class BackupEvernote(object):
                 self._exception('save note', fn_path, e)
         return
 
-    def _rename_file(self, full_path, filename):
-        filename = self._remove_chars(filename, self.forbidden)
-        renamed = filename.replace('.html', '.txt')
-        old_filename = full_path.rpartition('/')[-1]
-        return full_path.replace(old_filename, renamed)
-
     def _remove_chars(self, stack_or_nb, folder_chars, trail=False):
         try:
             if not trail:
@@ -161,8 +167,15 @@ class BackupEvernote(object):
         finally:
             return stack_or_nb
 
+    def _rename_file(self, full_path, filename, trail=False):
+        filename = self._remove_chars(filename, self.forbidden, trail)
+        renamed = filename.replace('.html', '.txt')
+        old_filename = full_path.rpartition('/')[-1]
+        return full_path.replace(old_filename, renamed)
+
     def nbooks_to_dirs(self):
         """ creates notebook & notebook stack folder structure containing all respective notes"""
+        print "\nOrganizing notes by directory (based on notebooks & stacks)..."
         copied = []
         con = sqlite3.connect(self.db_dir)
         notebooks = con.execute("SELECT * FROM notebook_attr;").fetchall()
@@ -232,43 +245,42 @@ class BackupEvernote(object):
         # rename all files and folders within output folder
         for p, dirs, files in os.walk(self.output_dir):
             for d in dirs:
-                d_path = os.path.join(p, d)
-                new_path = self._rename_file(d_path, d)
-                os.rename(d_path, new_path)
+                new_d = self._remove_chars(d, self.forbidden)
+                new_d = new_d.replace('.html', '.txt')
+                os.rename(os.path.join(p, d), os.path.join(p, new_d))
+        for p, dirs, files in os.walk(self.output_dir):
             for f in files:
-                f_path = os.path.join(p, f)
-                new_path = self._rename_file(f_path, f)
-                os.rename(f_path, new_path)
+                new_f = self._remove_chars(f, self.forbidden)
+                new_f = new_f.replace('.html', '.txt')
+                os.rename(os.path.join(p, f), os.path.join(p, new_f))
         return
 
-    def backup(self, notebooks_to_dirs=True, to_markdown=True, zim_sintax=False):
+    def to_markdown(self, zim_sintax=False):
+        print "\nConverting note syntax..."
+        c_dir = self.output_dir or self.evernote_dir
+        ind = 0
+        for p, d, files in os.walk(c_dir):
+            for f in files:
+                fl_path = os.path.join(p, f)
+                if fnmatch(f, '*.txt'):
+                    self.edit_file(fl_path, f, zim_sintax)
+                    ind += 1
+                    self._counter(ind, 'edited files')
+
+    def backup(self, notebooks_to_dirs=True, to_markdown=False, zim_sintax=False):
         if notebooks_to_dirs:
-            print "\nOrganizing notes by directory (based on notebooks & stacks)..."
             self.nbooks_to_dirs()
-
         if to_markdown or zim_sintax:
-            print "\nConverting note syntax..."
-            c_dir = self.output_dir or self.evernote_dir
-
-            ind = 0
-            for p, d, files in os.walk(c_dir):
-                for f in files:
-                    fl_path = os.path.join(p, f)
-                    if fnmatch(f, '*.txt'):
-                        self.edit_file(fl_path, f, zim_sintax)
-                        ind += 1
-                        self._counter(ind, 'edited files')
-
-        print "\nProcess complete."
+            self.to_markdown(zim_sintax)
         return
 
 
 if __name__ == '__main__':
     notes_dir = '/media/truecrypt2'
     db_dir = '/home/unknown/evernote_backup/Databases/shawnx22.exb'
-    output_dir = '/home/unknown/tmp'
+    output_dir = '/home/unknown/tmp_notes'
+    # output_dir = '/home/evernote_backup/Notes'
 
     ev = BackupEvernote(notes_dir, db_dir, output_dir)
-    ev.backup(notebooks_to_dirs=True,
-              to_markdown=True,
-              zim_sintax=True)
+    ev.backup()
+    ev.to_markdown(zim_sintax=True)
